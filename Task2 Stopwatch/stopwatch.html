@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Watch-Style Stopwatch</title>
+
+    <style>
+        :root {
+            --bg-1: #071026;
+            --bg-2: #0f2345;
+            --accent: #00e0ff;
+            --glass: rgba(255, 255, 255, 0.06);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0
+        }
+
+        html,
+        body {
+            height: 100%
+        }
+
+        body {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: radial-gradient(circle at 10% 10%, #071026 0%, #0b1630 40%, #0f2345 100%);
+            font-family: "Poppins", system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+            color: #fff;
+            padding: 28px;
+        }
+
+        .wrap {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 18px;
+            width: 100%;
+            max-width: 420px;
+        }
+
+        /* Outer "watch" */
+        .watch {
+            width: 320px;
+            height: 320px;
+            border-radius: 50%;
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: radial-gradient(circle at 30% 25%, rgba(255, 255, 255, 0.03), rgba(255, 255, 255, 0.01) 10%),
+                linear-gradient(180deg, #0b1830, #091026);
+            box-shadow:
+                0 12px 40px rgba(0, 0, 0, 0.6),
+                0 0 40px rgba(0, 224, 255, 0.06),
+                inset 0 8px 30px rgba(255, 255, 255, 0.02);
+            border: 3px solid rgba(0, 224, 255, 0.06);
+        }
+
+        .bezel {
+            position: absolute;
+            inset: -8px;
+            border-radius: 50%;
+            pointer-events: none;
+            background:
+                conic-gradient(from 90deg at 50% 50%, rgba(0, 224, 255, 0.02), transparent 20%),
+                radial-gradient(circle at 50% 50%, rgba(0, 0, 0, 0.2), transparent 40%);
+            filter: blur(0.5px);
+        }
+
+        /* minute ticks */
+        .ticks {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            pointer-events: none;
+        }
+
+        .ticks::before {
+            content: "";
+            position: absolute;
+            inset: 18px;
+            border-radius: 50%;
+            box-shadow:
+                0 0 18px rgba(0, 224, 255, 0.035) inset;
+        }
+
+        /* digital time */
+        #time {
+            font-size: 44px;
+            font-weight: 700;
+            letter-spacing: 3px;
+            text-shadow: 0 0 18px rgba(0, 224, 255, 0.12);
+            background: linear-gradient(180deg, rgba(255, 255, 255, 0.95), rgba(255, 255, 255, 0.85));
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+        }
+
+        /* lower control area */
+        .controls {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        button {
+            border: none;
+            padding: 10px 16px;
+            border-radius: 999px;
+            font-weight: 700;
+            cursor: pointer;
+            font-size: 14px;
+            transition: transform .12s ease, box-shadow .12s ease;
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.45);
+        }
+
+        button:active {
+            transform: translateY(1px)
+        }
+
+        .start {
+            background: linear-gradient(180deg, #2bd37a, #1fa85a);
+            color: #02120a;
+        }
+
+        .pause {
+            background: linear-gradient(180deg, #ffd166, #f59f00);
+            color: #331f00;
+        }
+
+        .reset {
+            background: linear-gradient(180deg, #ff7b7b, #e64545);
+            color: #3b0707;
+        }
+
+        .lap {
+            background: linear-gradient(180deg, #6fb0ff, #2f7fe8);
+            color: #021033;
+        }
+
+        /* laps list */
+        .laps {
+            width: 100%;
+            max-width: 320px;
+            margin-top: 6px;
+            background: linear-gradient(180deg, rgba(255, 255, 255, 0.02), rgba(255, 255, 255, 0.01));
+            border-radius: 10px;
+            padding: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.04);
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.45);
+            max-height: 180px;
+            overflow: auto;
+        }
+
+        .lap-item {
+            display: flex;
+            justify-content: space-between;
+            gap: 10px;
+            padding: 8px 10px;
+            margin-bottom: 8px;
+            background: linear-gradient(90deg, rgba(255, 255, 255, 0.02), transparent);
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 14px;
+            border-left: 4px solid rgba(0, 224, 255, 0.08);
+        }
+
+        /* small responsive */
+        @media (max-width:420px) {
+            .watch {
+                width: 280px;
+                height: 280px
+            }
+
+            #time {
+                font-size: 36px
+            }
+
+            .laps {
+                max-width: 280px
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="wrap">
+        <div class="watch" aria-hidden="true">
+            <div class="bezel"></div>
+            <div class="ticks"></div>
+            <div id="time">00:00:00</div>
+        </div>
+
+        <div class="controls" role="group" aria-label="Stopwatch controls">
+            <button class="start" id="startBtn">Start</button>
+            <button class="pause" id="pauseBtn">Pause</button>
+            <button class="reset" id="resetBtn">Reset</button>
+            <button class="lap" id="lapBtn">Lap</button>
+        </div>
+
+        <div class="laps" id="laps" aria-live="polite"></div>
+    </div>
+
+    <script>
+        // time state (ms increments)
+        let ms = 0, sec = 0, min = 0;
+        let timer = null;
+        let lapCount = 0;
+
+        const timeEl = document.getElementById('time');
+        const lapsEl = document.getElementById('laps');
+        const startBtn = document.getElementById('startBtn');
+        const pauseBtn = document.getElementById('pauseBtn');
+        const resetBtn = document.getElementById('resetBtn');
+        const lapBtn = document.getElementById('lapBtn');
+
+        function pad(n) { return n < 10 ? '0' + n : '' + n; }
+
+        function render() {
+            const msDisplay = Math.floor(ms / 10); // two-digit centiseconds
+            timeEl.textContent = `${pad(min)}:${pad(sec)}:${pad(msDisplay)}`;
+        }
+
+        function run() {
+            ms += 10;
+            if (ms === 1000) { ms = 0; sec++; }
+            if (sec === 60) { sec = 0; min++; }
+            render();
+        }
+
+        function start() {
+            if (!timer) {
+                timer = setInterval(run, 10);
+                // accessibility focus change
+                startBtn.disabled = true;
+            }
+        }
+
+        function pause() {
+            clearInterval(timer);
+            timer = null;
+            startBtn.disabled = false;
+        }
+
+        function reset() {
+            pause();
+            ms = sec = min = 0;
+            lapCount = 0;
+            lapsEl.innerHTML = '';
+            render();
+            startBtn.disabled = false;
+        }
+
+        function lap() {
+            if (ms === 0 && sec === 0 && min === 0) return; // ignore initial lap
+            lapCount++;
+            const li = document.createElement('div');
+            li.className = 'lap-item';
+            const time = `${pad(min)}:${pad(sec)}:${pad(Math.floor(ms / 10))}`;
+            li.innerHTML = `<div>Lap ${lapCount}</div><div>${time}</div>`;
+            // newest on top
+            lapsEl.insertBefore(li, lapsEl.firstChild);
+        }
+
+        // hook buttons
+        startBtn.addEventListener('click', start);
+        pauseBtn.addEventListener('click', pause);
+        resetBtn.addEventListener('click', reset);
+        lapBtn.addEventListener('click', lap);
+
+        // initial render
+        render();
+    </script>
+
+</body>
+
+</html>

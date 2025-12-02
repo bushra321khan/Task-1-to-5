@@ -1,0 +1,393 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Tic Tac Toe — Full Project (Updated)</title>
+    <style>
+        :root {
+            --bg1: #0f172a;
+            --bg2: #0b3b6f;
+            --accent: #60a5fa
+        }
+
+        * {
+            box-sizing: border-box
+        }
+
+        body {
+            margin: 0;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, var(--bg1), var(--bg2));
+            font-family: Inter, Arial, sans-serif;
+            color: #fff;
+            overflow: hidden
+        }
+
+        .wrap {
+            width: 100%;
+            max-width: 380px;
+            padding: 18px
+        }
+
+        h1 {
+            margin: 0 0 10px;
+            font-size: 1.2rem;
+            text-align: center
+        }
+
+        .controls {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin-bottom: 10px
+        }
+
+        select,
+        button {
+            flex: 1;
+            padding: 8px;
+            border-radius: 8px;
+            border: 0;
+            font-weight: 700;
+            font-size: 0.88rem
+        }
+
+        #startBtn {
+            background: #fff;
+            color: #0b3b6f
+        }
+
+        .board {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 6px;
+            margin: 10px auto;
+        }
+
+        .cell {
+            background: #fff;
+            border-radius: 8px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            aspect-ratio: 1/1;
+            position: relative
+        }
+
+        .cell span {
+            font-weight: 800;
+            color: #0b3b6f;
+            font-size: 1.4rem;
+            user-select: none
+        }
+
+        .line {
+            position: absolute;
+            background: #ffd44d;
+            height: 5px;
+            border-radius: 4px;
+            transform-origin: left center;
+            pointer-events: none;
+            z-index: 20;
+            transition: width 0.3s ease;
+        }
+
+        #status {
+            height: 36px;
+            margin-top: 8px;
+            text-align: center;
+            font-weight: 800;
+            display: flex;
+            align-items: center;
+            justify-content: center
+        }
+
+        @media (max-width:360px) {
+            .wrap {
+                padding: 12px
+            }
+
+            .cell span {
+                font-size: 1.1rem
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="wrap">
+        <h1>Tic Tac Toe</h1>
+
+        <div class="controls">
+            <select id="modeSelect" aria-label="game mode">
+                <option value="none">Select Mode</option>
+                <option value="2p">Two Players</option>
+                <option value="easy">Computer (Easy)</option>
+                <option value="hard">Computer (Hard)</option>
+            </select>
+
+            <button id="startBtn">Start</button>
+        </div>
+
+        <div class="board" id="board" aria-label="tic tac toe board"></div>
+        <div id="lineContainer"></div>
+        <div id="status"></div>
+
+        <div id="score" style="margin-top:10px;text-align:center;font-weight:700;font-size:0.9rem;">
+            <span id="pWinLabel">Player Wins</span>: <span id="pWin">0</span> &nbsp; | &nbsp;
+            <span id="cWinLabel">Computer Wins</span>: <span id="cWin">0</span> &nbsp; | &nbsp;
+            Draws: <span id="dWin">0</span>
+        </div>
+    </div>
+
+    <!-- Sounds (public) -->
+    <audio id="clickSound" src="https://assets.mixkit.co/sfx/preview/mixkit-select-click-1109.mp3"></audio>
+    <audio id="winSound" src="https://assets.mixkit.co/sfx/preview/mixkit-video-game-win-2016.mp3"></audio>
+    <audio id="drawSound" src="https://assets.mixkit.co/sfx/preview/mixkit-retro-game-emergency-tone-3037.mp3"></audio>
+
+    <script>
+        let board = Array(9).fill('');
+        let currentPlayer = 'X';
+        let gameActive = false;
+        let autoResetTimeout = null;
+
+        // Separate counters
+        let p1Wins = 0;
+        let p2Wins = 0;
+        let playerWins = 0;
+        let computerWins = 0;
+        let drawWins = 0;
+
+        const boardEl = document.getElementById('board');
+        const statusEl = document.getElementById('status');
+        const modeSelect = document.getElementById('modeSelect');
+        const startBtn = document.getElementById('startBtn');
+        const lineContainer = document.getElementById('lineContainer');
+
+        const clickSound = document.getElementById('clickSound');
+        const winSound = document.getElementById('winSound');
+        const drawSound = document.getElementById('drawSound');
+
+        const winPatterns = [
+            [0, 1, 2], [3, 4, 5], [6, 7, 8],
+            [0, 3, 6], [1, 4, 7], [2, 5, 8],
+            [0, 4, 8], [2, 4, 6]
+        ];
+
+        function getMode() { return modeSelect.value; }
+
+        function getWinnerLabel(symbol) {
+            const mode = getMode();
+            if (mode === '2p') return symbol === 'X' ? 'Player 1' : 'Player 2';
+            return symbol === 'X' ? 'Player' : 'Computer';
+        }
+
+        function updateScore() {
+            const mode = getMode();
+            const pWinLabel = document.getElementById('pWinLabel');
+            const cWinLabel = document.getElementById('cWinLabel');
+            const pWin = document.getElementById('pWin');
+            const cWin = document.getElementById('cWin');
+
+            if (mode === '2p') {
+                pWinLabel.textContent = 'Player 1 Wins';
+                cWinLabel.textContent = 'Player 2 Wins';
+                pWin.textContent = p1Wins;
+                cWin.textContent = p2Wins;
+            } else {
+                pWinLabel.textContent = 'Player Wins';
+                cWinLabel.textContent = 'Computer Wins';
+                pWin.textContent = playerWins;
+                cWin.textContent = computerWins;
+            }
+
+            document.getElementById('dWin').textContent = drawWins;
+        }
+
+        function renderBoard() {
+            boardEl.innerHTML = '';
+            lineContainer.innerHTML = '';
+            for (let i = 0; i < 9; i++) {
+                const c = document.createElement('div');
+                c.className = 'cell';
+                c.dataset.i = i;
+                c.innerHTML = `<span>${board[i] || ''}</span>`;
+                c.onclick = () => handleCellClick(i);
+                boardEl.appendChild(c);
+            }
+        }
+
+        function setStatusCentered(text) { statusEl.textContent = text; }
+
+        function resetGame() {
+            board = Array(9).fill('');
+            gameActive = false;
+            currentPlayer = 'X';
+            renderBoard();
+            setStatusCentered('');
+            lineContainer.innerHTML = '';
+            if (autoResetTimeout) clearTimeout(autoResetTimeout);
+        }
+
+        function startGame() {
+            if (getMode() === 'none') { alert('Select mode first'); return; }
+            resetGame();
+            gameActive = true;
+            setStatusCentered("Player X's turn");
+        }
+
+        modeSelect.addEventListener('change', () => {
+            resetGame();
+            updateScore(); // update labels when mode changes
+        });
+        startBtn.addEventListener('click', startGame);
+
+        function handleCellClick(i) {
+            if (!gameActive || board[i] !== '') return;
+
+            board[i] = currentPlayer;
+            clickSound.play().catch(() => { });
+            renderBoard();
+
+            if (processResult()) return;
+
+            if (getMode() === '2p') {
+                currentPlayer = currentPlayer === 'X' ? 'O' : 'X';
+                setStatusCentered(`Player ${currentPlayer}'s turn`);
+            } else {
+                gameActive = false;
+                setStatusCentered('AI Thinking...');
+                setTimeout(aiMove, 300);
+            }
+        }
+
+        function processResult() {
+            const winner = checkWinner();
+            if (winner) {
+                winSound.play().catch(() => { });
+                const mode = getMode();
+                const label = getWinnerLabel(winner);
+                setStatusCentered(`${label} Wins!`);
+
+                if (mode === '2p') {
+                    if (label === 'Player 1') p1Wins++;
+                    else p2Wins++;
+                } else {
+                    if (label === 'Player') playerWins++;
+                    else computerWins++;
+                }
+
+                updateScore();
+
+                gameActive = false;
+                autoResetTimeout = setTimeout(resetGame, 1400);
+                return true;
+            }
+
+            if (!board.includes('')) {
+                drawSound.play().catch(() => { });
+                setStatusCentered("It's a Draw!");
+                drawWins++;
+                updateScore();
+
+                gameActive = false;
+                autoResetTimeout = setTimeout(resetGame, 1400);
+                return true;
+            }
+            return false;
+        }
+
+        function checkWinner() {
+            for (const [a, b, c] of winPatterns) {
+                if (board[a] && board[a] === board[b] && board[b] === board[c]) {
+                    drawLine(a, c);
+                    return board[a];
+                }
+            }
+            return null;
+        }
+
+        function drawLine(a, c) {
+            const cells = boardEl.querySelectorAll('.cell');
+            const x1 = cells[a].offsetLeft + cells[a].offsetWidth / 2;
+            const y1 = cells[a].offsetTop + cells[a].offsetHeight / 2;
+            const x2 = cells[c].offsetLeft + cells[c].offsetWidth / 2;
+            const y2 = cells[c].offsetTop + cells[c].offsetHeight / 2;
+
+            const length = Math.hypot(x2 - x1, y2 - y1);
+            const angle = Math.atan2(y2 - y1, x2 - x1) * 180 / Math.PI;
+
+            const line = document.createElement('div');
+            line.className = 'line';
+            line.style.width = length + 'px';
+            line.style.left = x1 + 'px';
+            line.style.top = y1 + 'px';
+            line.style.transform = `rotate(${angle}deg)`;
+
+            lineContainer.innerHTML = '';
+            lineContainer.appendChild(line);
+        }
+
+        function aiMove() {
+            let move = null;
+            const mode = getMode();
+
+            if (mode === 'easy') move = easyAI();
+            else move = minimax(board, 'O').index;
+
+            board[move] = 'O';
+            clickSound.play().catch(() => { });
+            renderBoard();
+
+            if (processResult()) return;
+
+            currentPlayer = 'X';
+            gameActive = true;
+            setStatusCentered("Player X's turn");
+        }
+
+        function easyAI() {
+            const empty = board.map((v, i) => v === '' ? i : null).filter(v => v !== null);
+            return empty[Math.floor(Math.random() * empty.length)];
+        }
+
+        function minimax(newBoard, player) {
+            const empty = newBoard.map((v, i) => v === '' ? i : null).filter(v => v !== null);
+
+            for (const [a, b, c] of winPatterns) {
+                if (newBoard[a] && newBoard[a] === newBoard[b] && newBoard[b] === newBoard[c]) {
+                    if (newBoard[a] === 'O') return { score: 10 };
+                    else return { score: -10 };
+                }
+            }
+
+            if (empty.length === 0) return { score: 0 };
+
+            const moves = [];
+            for (const i of empty) {
+                const move = { index: i };
+                newBoard[i] = player;
+                const result = minimax(newBoard, player === 'O' ? 'X' : 'O');
+                move.score = result.score;
+                newBoard[i] = '';
+                moves.push(move);
+            }
+
+            let best;
+            if (player === 'O') best = moves.reduce((a, b) => a.score > b.score ? a : b);
+            else best = moves.reduce((a, b) => a.score < b.score ? a : b);
+            return best;
+        }
+
+        renderBoard();
+        updateScore();
+    </script>
+</body>
+
+</html>
