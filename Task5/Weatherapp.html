@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Blue Glow Weather App</title>
+
+<style>
+
+html, body{
+    margin:0;
+    padding:0;
+    height:100%;
+    overflow:hidden; 
+}
+
+body{
+    font-family:"Poppins", sans-serif;
+    background:#0a0a12;
+    color:white;
+
+    display:flex;
+    justify-content:center;
+    align-items:center;
+
+    padding:20px;
+    box-sizing:border-box;
+}
+
+
+.card{
+    width:100%;
+    max-width:380px;
+    height:auto;
+
+    padding:25px;
+    border-radius:24px;
+    background:rgba(255,255,255,0.05);
+    backdrop-filter:blur(20px);
+    position:relative;
+    overflow:hidden;
+    box-sizing:border-box;
+
+    border:2px solid rgba(80,160,255,0.6);
+    box-shadow:0 0 20px rgba(80,160,255,0.7);
+}
+
+
+.card::before{
+    content:"";
+    position:absolute;
+    top:-50%;
+    left:-50%;
+    width:200%;
+    height:200%;
+    background:conic-gradient(rgba(80,160,255,0.8), transparent);
+    animation:spin 6s linear infinite;
+}
+@keyframes spin { to{ transform:rotate(360deg); } }
+
+.card::after{
+    content:"";
+    position:absolute;
+    inset:3px;
+    background:rgba(10,10,18,0.96);
+    border-radius:22px;
+}
+
+
+.content{
+    position:relative;
+    z-index:5;
+}
+
+
+h2{
+    text-align:center;
+    color:#78b7ff;
+    font-weight:700;
+    font-size:22px;
+    margin:0 0 12px 0;
+    text-shadow:0 0 10px rgba(100,160,255,0.8);
+}
+
+
+.inputBox{
+    display:flex;
+    gap:10px;
+}
+input{
+    flex:1;
+    padding:12px;
+    border-radius:12px;
+    border:none;
+    outline:none;
+
+    background:#152536;
+    color:white;
+    font-size:14px;
+    border:1px solid rgba(140,200,255,0.4);
+
+    box-sizing:border-box;
+}
+input::placeholder{
+    color:#bbd9ff;
+}
+button{
+    padding:12px 16px;
+    border:none;
+    border-radius:12px;
+
+    background:#4ea3ff;
+    color:black;
+    font-weight:700;
+    cursor:pointer;
+    box-shadow:0 0 10px #4ea3ff;
+}
+button:hover{
+    background:#78c0ff;
+}
+
+
+#output{
+    margin-top:15px;
+    padding:15px;
+    border-radius:14px;
+    background:rgba(255,255,255,0.06);
+    border:1px solid rgba(140,190,255,0.4);
+
+    font-size:15px;
+    line-height:1.6;
+    color:white;
+}
+
+.city{
+    text-align:center;
+    font-size:20px;
+    font-weight:700;
+    color:#d7ecff;
+}
+
+.temp{
+    text-align:center;
+    font-size:42px;
+    font-weight:800;
+    margin:10px 0;
+    color:#91c9ff;
+    text-shadow:0 0 10px rgba(100,170,255,0.9);
+}
+
+/* WEATHER ICON */
+.iconBox{
+    text-align:center;
+    margin:5px 0;
+}
+
+/* INFO ROW */
+.row{
+    display:flex;
+    justify-content:space-between;
+    margin:4px 0;
+}
+
+/* RESPONSIVE FIX */
+@media(max-width:380px){
+    .temp{ font-size:34px; }
+    h2{ font-size:19px; }
+    button, input{ padding:10px; }
+}
+</style>
+</head>
+
+<body>
+
+<div class="card">
+<div class="content">
+
+<h2>🌐 Weather App</h2>
+
+<div class="inputBox">
+    <input id="city" placeholder="Enter city">
+    <button onclick="getWeather()">Go</button>
+</div>
+
+<div id="output"></div>
+
+</div></div>
+
+<script>
+const API_KEY = "db701efa7f2ea8ea00085fa89261317e"; 
+
+function timeFormat(t){
+    return new Date(t*1000).toLocaleTimeString([], {hour:"2-digit", minute:"2-digit"});
+}
+
+async function getWeather(){
+    const city = document.getElementById("city").value.trim();
+    const out = document.getElementById("output");
+
+    if(!city){
+        out.innerHTML = "Enter a city name.";
+        return;
+    }
+
+    out.innerHTML = "Loading...";
+
+    try{
+        const url = 
+        `https://api.openweathermap.org/data/2.5/weather?q=${city}&units=metric&appid=${API_KEY}`;
+        
+        const r = await fetch(url);
+        const data = await r.json();
+
+        if(data.cod != 200){
+            out.innerHTML = "City not found";
+            return;
+        }
+
+        const icon = data.weather[0].icon;
+
+        out.innerHTML = `
+            <div class="city">${data.name}, ${data.sys.country}</div>
+
+            <div class="iconBox">
+                <img src="https://openweathermap.org/img/wn/${icon}@2x.png">
+            </div>
+
+            <div class="temp">${Math.round(data.main.temp)}°C</div>
+
+            <div class="row"><strong>Feels:</strong> ${data.main.feels_like}°C</div>
+            <div class="row"><strong>Humidity:</strong> ${data.main.humidity}%</div>
+            <div class="row"><strong>Wind:</strong> ${data.wind.speed} m/s</div>
+            <div class="row"><strong>Weather:</strong> ${data.weather[0].description}</div>
+            <div class="row"><strong>Sunrise:</strong> ${timeFormat(data.sys.sunrise)}</div>
+            <div class="row"><strong>Sunset:</strong> ${timeFormat(data.sys.sunset)}</div>
+        `;
+    }
+    catch(e){
+        out.innerHTML = "Error: " + e.message;
+    }
+}
+</script>
+
+</body>
+</html>
